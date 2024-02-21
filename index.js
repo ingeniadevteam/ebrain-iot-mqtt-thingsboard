@@ -13,7 +13,11 @@ module.exports = (
 ) => {
     // Initialization of mqtt client using Thingsboard host and device access token
     app.logger.debug(`mqtt connecting to ${thingsboardHost}`);
-    app['mqtt-thingsboard'].client = mqtt.connect('mqtt://'+ thingsboardHost, { username: accessToken });
+    app['mqtt-thingsboard'].client = mqtt.connect('mqtt://' + thingsboardHost, {
+        username: accessToken,
+        keepalive: 10,
+        reconnectPeriod: 15000
+    });
 
     app['mqtt-thingsboard'].client.on('connect', success => {
         if (!success) {
@@ -66,23 +70,16 @@ module.exports = (
     app['mqtt-thingsboard'].client.on('close', () => {
         app.logger.warn('mqtt connection closed');
         app['mqtt-thingsboard'].ready = false;
-        setTimeout(() => {
-            try {
-                app['mqtt-thingsboard'].client = mqtt.connect('mqtt://'+ thingsboardHost, { username: accessToken });
-            } catch (error) {
-                app.logger.info(`mqtt reconnect ${err.message}`);    
-            }
-        }, 1000);
     });
     
     app['mqtt-thingsboard'].client.on('error', err => {
-        app.logger.info(`mqtt error ${err.message}`);
-        try {
-            app['mqtt-thingsboard'].client.close();
-        } catch (error) {
-            app.logger.info(`mqtt reconnect ${err.message}`);    
-        }
+        app.logger.warn(`mqtt error ${err.message}`);
     });
+
+    app['mqtt-thingsboard'].client.on('reconnect', () => {
+        app['mqtt-thingsboard'].ready = true;
+        app.logger.info(`mqtt reconnected ${err.message}`);
+    })
     
     app['mqtt-thingsboard'].client.on('message', (topic, message) => {
         app.logger.debug(`mqtt topic ${topic.split('v1/devices/me/')[1]}`);
