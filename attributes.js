@@ -5,7 +5,7 @@ const { writeFileSync } = require('fs');
 
 module.exports = (app, message) => {
     const attributesFilePath = `${app.configDir}/attributes.json`;
-    let current;
+    let current, newValue;
 
     if (!message) {
         app.logger.error(`attributes: NO SHARED ATTRIBUTES! CONFIGURE THEM IN THE PLATFORM`);
@@ -28,11 +28,14 @@ module.exports = (app, message) => {
                 }
                 // update config
                 current = app.attributes[attr];
-                app.attributes[attr] = message[attr];
+                // console.log("current", current);
+                newValue = message[attr];
+                // console.log("newValue", newValue);
+                app.attributes[attr] = newValue;
                 // update attributes config file
                 writeFileSync(attributesFilePath, JSON.stringify(app.attributes, null, 4));
                 // info
-                app.logger.info(`mqtt app.attributes.${attr} changed from '${current}' to '${message[attr]}'`);
+                app.logger.info(`mqtt app.attributes.${attr} changed from '${current}' to '${newValue}'`);
             } catch (error) {
                 app.logger.error(`attributes: ${error.message}`);
             }

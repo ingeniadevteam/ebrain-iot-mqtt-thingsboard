@@ -66,10 +66,22 @@ module.exports = (
     app['mqtt-thingsboard'].client.on('close', () => {
         app.logger.warn('mqtt connection closed');
         app['mqtt-thingsboard'].ready = false;
+        setTimeout(() => {
+            try {
+                app['mqtt-thingsboard'].client = mqtt.connect('mqtt://'+ thingsboardHost, { username: accessToken });
+            } catch (error) {
+                app.logger.info(`mqtt reconnect ${err.message}`);    
+            }
+        }, 1000);
     });
     
     app['mqtt-thingsboard'].client.on('error', err => {
         app.logger.info(`mqtt error ${err.message}`);
+        try {
+            app['mqtt-thingsboard'].client.close();
+        } catch (error) {
+            app.logger.info(`mqtt reconnect ${err.message}`);    
+        }
     });
     
     app['mqtt-thingsboard'].client.on('message', (topic, message) => {
@@ -77,8 +89,9 @@ module.exports = (
 
         if (topic === 'v1/devices/me/attributes/response/1') {
             // this is the first message requested on connect
-            const { shared } = JSON.parse(message);
-            attributesConfig(app, shared);
+            // const { shared } = JSON.parse(message);
+            // console.log(shared);
+            // attributesConfig(app, shared);
         } else if (topic === 'v1/devices/me/attributes') {
             try {
                 attributesConfig(app, JSON.parse(message));
