@@ -78,7 +78,7 @@ module.exports = (
 
     app['mqtt-thingsboard'].client.on('reconnect', () => {
         app['mqtt-thingsboard'].ready = true;
-        app.logger.info(`mqtt reconnected ${err.message}`);
+        app.logger.info(`mqtt reconnected`);
     })
     
     app['mqtt-thingsboard'].client.on('message', (topic, message) => {
