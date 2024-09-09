@@ -1,9 +1,10 @@
 'use strict';
 
-const CronJob = require('cron').CronJob;
-const { writeFileSync } = require('fs');
+// const CronJob = require('cron').CronJob;
+// const { writeFileSync } = require('fs');
 
-module.exports = (app, topic, message) => {
+module.exports = (app, topic, message, isGateway) => {
+    if (!isGateway) return;
     try {
         const { method, params } = JSON.parse(message);
 
@@ -43,5 +44,4 @@ module.exports = (app, topic, message) => {
         console.log(error);
         app.logger.error(`rpc ${error.message}`);
     }
-
 };

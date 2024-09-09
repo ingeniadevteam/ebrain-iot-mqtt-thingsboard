@@ -11,6 +11,8 @@ module.exports = (
     thingsboardHost = process.env.MQTT_HOSTNAME,
     accessToken = process.env.MQTT_ACCESS_TOKEN,
 ) => {
+    const isGateway = process.env.GATEWAY === 'true';
+
     // Initialization of mqtt client using Thingsboard host and device access token
     app.logger.debug(`mqtt connecting to ${thingsboardHost}`);
     app['mqtt-thingsboard'].client = mqtt.connect('mqtt://' + thingsboardHost, {
@@ -34,18 +36,29 @@ module.exports = (
                 });
             }
 
-            // request Shared attributes 
-            const attributes = Array.from(Object.keys(app.attributes));
+            // request shared "Device" attributes
+            const attributes = Array.from(Object.keys(isGateway ? app.attributes.gateway : app.attributes));
             app.logger.info(`mqtt requesting shared attributes: ${attributes}`);
             app['mqtt-thingsboard'].client.subscribe('v1/devices/me/attributes/response/+');
             app['mqtt-thingsboard'].client.publish('v1/devices/me/attributes/request/1', `{"sharedKeys":"${attributes}"}`);
+            
             // subscribe to Shared attributes
             app['mqtt-thingsboard'].client.subscribe('v1/devices/me/attributes');
 
-            // publish current Client attributtes
-            app['mqtt-thingsboard'].client.publish(
-                'v1/devices/me/attributes', JSON.stringify(app.attributes)
-            );
+            // request shared "Gateway" devices attributes
+            if (isGateway) {
+                const devices_attributes = { ...app.attributes };
+                delete devices_attributes.gateway;                
+                const attributes = Array.from(Object.keys(devices_attributes));
+                app.logger.info(`mqtt requesting gateway devices attributes: ${attributes}`);
+                for (const device of attributes) {
+                    const keys = Object.keys(devices_attributes[device]).sort();
+                    keys.forEach((key, id) => {
+                        const message = { id, device, key, client: 1 };                        
+                        app['mqtt-thingsboard'].client.publish('v1/gateway/attributes/request', JSON.stringify(message));                         
+                    });                 
+                }
+            }
 
             // subscribe to RPC commands
             app['mqtt-thingsboard'].client.subscribe('v1/devices/me/rpc/request/+');
@@ -82,22 +95,18 @@ module.exports = (
     })
     
     app['mqtt-thingsboard'].client.on('message', (topic, message) => {
-        app.logger.debug(`mqtt topic ${topic.split('v1/devices/me/')[1]}`);
-
         if (topic === 'v1/devices/me/attributes/response/1') {
-            // this is the first message requested on connect
-            // const { shared } = JSON.parse(message);
-            // console.log(shared);
-            // attributesConfig(app, shared);
+            // this is the first message requested on connect           
+            const { shared } = JSON.parse(message);
+            attributesConfig(app, 'v1/devices/me/attributes', shared, isGateway);
         } else if (topic === 'v1/devices/me/attributes') {
-            try {
-                attributesConfig(app, JSON.parse(message));
-            } catch (err) {
-                app.logger.info(`mqtt error ${err.message}`);
-            }
+            attributesConfig(app, topic, JSON.parse(message), isGateway);
         } else if (topic.includes('v1/devices/me/rpc/request/')) {
-            // process RPC request
-            rpcConfig(app, topic, message);
+            rpcConfig(app, topic, message, isGateway);
+        } else if (topic === 'v1/gateway/attributes') {
+            attributesConfig(app, topic, JSON.parse(message), isGateway);
+        } else if (topic === 'v1/gateway/attributes/response') {
+            attributesConfig(app, topic, JSON.parse(message), isGateway);
         }
     });
     
