@@ -62,6 +62,8 @@ module.exports = (
 
             // subscribe to RPC commands
             app['mqtt-thingsboard'].client.subscribe('v1/devices/me/rpc/request/+');
+            // subscribe to RPC gateway commands
+            app['mqtt-thingsboard'].client.subscribe('v1/gateway/rpc');
 
             // configure exit hook
             exitHook(() => {
@@ -94,7 +96,7 @@ module.exports = (
         app.logger.info(`mqtt reconnected`);
     })
     
-    app['mqtt-thingsboard'].client.on('message', (topic, message) => {
+    app['mqtt-thingsboard'].client.on('message', (topic, message) => {        
         if (topic === 'v1/devices/me/attributes/response/1') {
             // this is the first message requested on connect           
             const { shared } = JSON.parse(message);
@@ -102,11 +104,21 @@ module.exports = (
         } else if (topic === 'v1/devices/me/attributes') {
             attributesConfig(app, topic, JSON.parse(message), isGateway);
         } else if (topic.includes('v1/devices/me/rpc/request/')) {
-            rpcConfig(app, topic, message, isGateway);
+            if (typeof app.rpc === 'function') {
+                app.rpc(app, topic, message, isGateway);
+            } else {
+                rpcConfig(app, topic, message, isGateway);
+            }
         } else if (topic === 'v1/gateway/attributes') {
             attributesConfig(app, topic, JSON.parse(message), isGateway);
         } else if (topic === 'v1/gateway/attributes/response') {
             attributesConfig(app, topic, JSON.parse(message), isGateway);
+        } else if (topic === 'v1/gateway/rpc') {
+            if (typeof app.rpc === 'function') {
+                app.rpc(app, topic, message, isGateway);
+            } else {
+                rpcConfig(app, topic, message, isGateway);
+            }
         }
     });
     

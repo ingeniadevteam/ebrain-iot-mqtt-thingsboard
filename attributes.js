@@ -7,6 +7,8 @@ module.exports = (app, topic, message, isGateway) => {
     const attributesFilePath = `${app.configDir}/attributes.json`;
     let current, newValue;
 
+    if (!message) return;
+
     if (isGateway) {
         if (topic === 'v1/gateway/attributes/response') {
             if (!message.hasOwnProperty('value')) return;
