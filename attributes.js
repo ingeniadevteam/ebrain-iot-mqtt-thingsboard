@@ -61,7 +61,7 @@ module.exports = (app, topic, message, isGateway) => {
                 // check diff
                 if (app.attributes.gateway[attr] !== message[attr]) {               
                     try {
-                        if (app[attr.job]) {
+                        if (app[attr] && app[attr].job) {
                             // stop the job
                             app[attr].job.stop();
                             // create new job
@@ -88,9 +88,9 @@ module.exports = (app, topic, message, isGateway) => {
             // check attribute
             if (!app.attributes || !app.attributes.hasOwnProperty(attr)) return;
             // check diff
-            if (app.attributes[device][attr] !== message[attr]) {               
+            if (app.attributes[attr] !== message[attr]) {               
                 try {
-                    if (app[attr.job]) {
+                    if (app[attr] && app[attr].job) {
                         // stop the job
                         app[attr].job.stop();
                         // create new job
@@ -98,7 +98,7 @@ module.exports = (app, topic, message, isGateway) => {
                         require(`@clysema/ebrain-iot-${module}`)(app)(app), null, true, 'Europe/Madrid');
                     }
                     // update config
-                    current = app.attributes[device][attr];
+                    current = app.attributes[attr];
                     newValue = message[attr];
                     app.attributes[attr] = newValue;
                     // update attributes config file
